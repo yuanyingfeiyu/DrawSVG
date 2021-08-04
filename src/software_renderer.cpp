@@ -244,6 +244,59 @@ void SoftwareRendererImp::rasterize_line( float x0, float y0,
 
   // Task 2: 
   // Implement line rasterization
+  // implemented with Bresenham's algorithm 
+  bool steep = abs(y1 - y0) > abs(x1 - x0);
+  if(steep) {
+    swap(x0, y0);
+    swap(x1, y1);
+  }
+
+  if(x0 > x1) {
+    swap(x0, x1);
+    swap(y0, y1);
+  }
+
+  int dx = x1 - x0,
+      dy = y1 - y0,
+      y = y0,
+      eps = 0;
+
+  bool negative = dy * dx < 0;
+
+  if (!negative) {
+    for(int x = x0; x <= x1; x++ ) {
+      if (steep) {
+        rasterize_point(y, x, color);
+      } else {
+        rasterize_point(x, y, color);
+      }
+      
+      eps += dy;
+      if ((eps << 1) >= dx) {
+        y++;
+        eps -= dx;
+      }
+    }  
+  } else {
+    for(int x = x0; x <= x1; x++) {
+      if (steep) {
+        rasterize_point(y, x, color);
+      } else {
+        rasterize_point(x, y, color);
+      }
+      
+      eps += dy;
+      if ((eps << 1) <= - dx) {
+        y--;
+        eps += dx;
+      }
+    }
+  }
+
+  // task 2:
+  // Implement line rasterization
+  // to be continued: implemented with Xiaolin Wu's line algorithm
+
 }
 
 void SoftwareRendererImp::rasterize_triangle( float x0, float y0,
