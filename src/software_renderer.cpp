@@ -15,7 +15,6 @@ namespace CMU462 {
 // Implements SoftwareRenderer //
 
 void SoftwareRendererImp::draw_svg( SVG& svg ) {
-
   // set top level transformation
   transformation = svg_2_screen;
 
@@ -299,12 +298,52 @@ void SoftwareRendererImp::rasterize_line( float x0, float y0,
 
 }
 
+int sign(float value) {
+  return value == 0 ? 0 : value > 0 ? 1 : -1;
+}
+
+bool in_triangle(Vector2D p1, Vector2D p2, Vector2D p3, Vector2D point) {
+  Vector2D a = p2 - p1;
+  Vector2D b = p3 - p2;
+  Vector2D c = p1 - p3;
+
+  Vector2D u1 = point - p1;
+  Vector2D u2 = point - p2;
+  Vector2D u3 = point - p3;
+
+  int s1 = sign(cross(a, u1));
+  double p = dot(a, u1) / a.norm2();
+  if(s1 == 0 && p >= 0 && p <= 1) return true;
+
+  int s2 = sign(cross(b, u2));
+  p = dot(b, u2) / b.norm2();
+  if(s2 == 0 && p >= 0 && p <= 1) return true;
+
+  int s3 = sign(cross(c, u3));
+  p = dot(c, u3) / c.norm2();
+  if (s3 == 0 && p >= 0 && p <= 1) return true;
+
+  return s1 == s2 && s2 == s3;
+}
+
 void SoftwareRendererImp::rasterize_triangle( float x0, float y0,
                                               float x1, float y1,
                                               float x2, float y2,
                                               Color color ) {
   // Task 3: 
   // Implement triangle rasterization
+  float hmax = ceil(fmax(fmax(x0, x1), x2)), 
+        hmin = floor(fmin(fmin(x0, x1), x2)), 
+        vmax = ceil(fmax(fmax(y0, y1), y2)), 
+        vmin = floor(fmin(fmin(y0, y1), y2));
+
+  for(int i = hmin; i + 0.5 < hmax; i++) {
+    for(int j = vmin; j + 0.5 < vmax; j++) {
+      if(in_triangle(Vector2D(x0, y0), Vector2D(x1, y1), Vector2D(x2, y2), Vector2D(i + 0.5, j + 0.5))) {
+        rasterize_point(i, j, color);
+      }
+    }
+  }
 
 }
 
