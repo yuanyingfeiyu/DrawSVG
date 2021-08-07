@@ -15,7 +15,7 @@ namespace CMU462 {
 // Implements SoftwareRenderer //
 
 void SoftwareRendererImp::draw_svg( SVG& svg ) {
-  sample_buffer = vector<unsigned char>(w * h * 4, 255);
+  
   // set top level transformation
   transformation = svg_2_screen;
 
@@ -64,6 +64,7 @@ void SoftwareRendererImp::set_sample_rate( size_t sample_rate ) {
   this->sample_rate = sample_rate;
   this->w = sample_rate * target_w;
   this->h = sample_rate * target_h;
+  sample_buffer = vector<unsigned char>(w * h * 4, 255);
 }
 
 void SoftwareRendererImp::set_render_target( unsigned char* render_target,
@@ -395,16 +396,18 @@ void SoftwareRendererImp::resolve( void ) {
   
 
   // first: apply unit-area box filter and set the render_target
+  // printf("%d, %d", w, h);
   int filter_count = sample_rate * sample_rate;
   for(int x = 0; x < target_w; x++) {
     for(int y = 0; y < target_h; y++) {
         float r = 0, g = 0, b = 0, a = 0;
         for(int i = 0; i < sample_rate; i++) {
           for(int j = 0; j < sample_rate; j++) {
-            r += sample_buffer[4*((x+i) + (y+j) * w) + 0] / 255.0f / filter_count;
-            g += sample_buffer[4*((x+i) + (y+j) * w) + 1] / 255.0f / filter_count;
-            b += sample_buffer[4*((x+i) + (y+j) * w) + 2] / 255.0f/ filter_count;
-            a += sample_buffer[4*((x+i) + (y+j) * w) + 3] / 255.0f / filter_count;
+            int index = 4* (x * sample_rate + i + (y * sample_rate + j) * w);
+            r += sample_buffer[index + 0] / 255.0f / filter_count;
+            g += sample_buffer[index + 1] / 255.0f / filter_count;
+            b += sample_buffer[index + 2] / 255.0f / filter_count;
+            a += sample_buffer[index + 3] / 255.0f / filter_count;
           }
         }
         fill_pixel(x, y, Color(r, g, b, a));
