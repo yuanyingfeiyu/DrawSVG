@@ -15,6 +15,7 @@ namespace CMU462 {
 // Implements SoftwareRenderer //
 
 void SoftwareRendererImp::draw_svg( SVG& svg ) {
+  sample_buffer = vector<unsigned char>(w * h * 4, 255);
   // set top level transformation
   transformation = svg_2_screen;
 
@@ -36,15 +37,33 @@ void SoftwareRendererImp::draw_svg( SVG& svg ) {
 
   // resolve and send to render target
   resolve();
-
 }
+
+void SoftwareRendererImp::fill_sample( int sx, int sy, const Color& color ) {
+  if(sx < 0 || sx >= w) return;
+  if(sy < 0 || sy >= h) return;
+
+  sample_buffer[4 * (sx + sy * w)    ] = (uint8_t) (color.r * 255);
+  sample_buffer[4 * (sx + sy * w) + 1] = (uint8_t) (color.g * 255);
+  sample_buffer[4 * (sx + sy * w) + 2] = (uint8_t) (color.b * 255);
+  sample_buffer[4 * (sx + sy * w) + 3] = (uint8_t) (color.a * 255);
+};
+
+void SoftwareRendererImp::fill_pixel( int x, int y, const Color& color ) {
+  render_target[4 * (x + y * target_w)    ] = (uint8_t) (color.r * 255);
+  render_target[4 * (x + y * target_w) + 1] = (uint8_t) (color.g * 255);
+  render_target[4 * (x + y * target_w) + 2] = (uint8_t) (color.b * 255);
+  render_target[4 * (x + y * target_w) + 3] = (uint8_t) (color.a * 255);
+};
+
 
 void SoftwareRendererImp::set_sample_rate( size_t sample_rate ) {
 
   // Task 4: 
   // You may want to modify this for supersampling support
   this->sample_rate = sample_rate;
-
+  this->w = sample_rate * target_w;
+  this->h = sample_rate * target_h;
 }
 
 void SoftwareRendererImp::set_render_target( unsigned char* render_target,
@@ -55,7 +74,7 @@ void SoftwareRendererImp::set_render_target( unsigned char* render_target,
   this->render_target = render_target;
   this->target_w = width;
   this->target_h = height;
-
+  set_sample_rate(sample_rate);
 }
 
 void SoftwareRendererImp::draw_element( SVGElement* element ) {
@@ -230,10 +249,8 @@ void SoftwareRendererImp::rasterize_point( float x, float y, Color color ) {
   if ( sy < 0 || sy >= target_h ) return;
 
   // fill sample - NOT doing alpha blending!
-  render_target[4 * (sx + sy * target_w)    ] = (uint8_t) (color.r * 255);
-  render_target[4 * (sx + sy * target_w) + 1] = (uint8_t) (color.g * 255);
-  render_target[4 * (sx + sy * target_w) + 2] = (uint8_t) (color.b * 255);
-  render_target[4 * (sx + sy * target_w) + 3] = (uint8_t) (color.a * 255);
+  // printf("%s \n", sample_buffer);
+  fill_sample(sx, sy, color);
 
 }
 
@@ -355,12 +372,44 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
 
 }
 
+
+void apply_filter(unsigned char* supersample_target, unsigned char* target_buffer, size_t sample_rate, size_t target_w, size_t target_h, int x, int y) {
+  
+  for(int bit = 0; bit < 4; bit++) {
+    int sum = 0;
+    for(int i = 0; i < sample_rate; i++) {
+      for(int j = 0; j < sample_rate; j++) {
+        sum += supersample_target[4*((x+i) + (y+j) * target_w * sample_rate) + bit];
+      }
+    }
+    target_buffer[4*(x + y * target_w) + bit] = (uint8_t) sum / (sample_rate * sample_rate);
+  }
+}
+
 // resolve samples to render target
 void SoftwareRendererImp::resolve( void ) {
 
   // Task 4: 
   // Implement supersampling
   // You may also need to modify other functions marked with "Task 4".
+  
+
+  // first: apply unit-area box filter and set the render_target
+  int filter_count = sample_rate * sample_rate;
+  for(int x = 0; x < target_w; x++) {
+    for(int y = 0; y < target_h; y++) {
+        float r = 0, g = 0, b = 0, a = 0;
+        for(int i = 0; i < sample_rate; i++) {
+          for(int j = 0; j < sample_rate; j++) {
+            r += sample_buffer[4*((x+i) + (y+j) * w) + 0] / 255.0f / filter_count;
+            g += sample_buffer[4*((x+i) + (y+j) * w) + 1] / 255.0f / filter_count;
+            b += sample_buffer[4*((x+i) + (y+j) * w) + 2] / 255.0f/ filter_count;
+            a += sample_buffer[4*((x+i) + (y+j) * w) + 3] / 255.0f / filter_count;
+          }
+        }
+        fill_pixel(x, y, Color(r, g, b, a));
+    }
+  }
   return;
 
 }
