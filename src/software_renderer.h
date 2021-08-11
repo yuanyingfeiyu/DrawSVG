@@ -88,6 +88,8 @@ class SoftwareRendererImp : public SoftwareRenderer {
   // Draws a point
   void draw_point( Point& p );
 
+  void paint_point( float x, float y, Color fillColor);
+
   // Draw a line
   void draw_line( Line& line );
 

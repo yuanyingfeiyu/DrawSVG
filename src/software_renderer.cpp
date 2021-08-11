@@ -15,7 +15,7 @@ namespace CMU462 {
 // Implements SoftwareRenderer //
 
 void SoftwareRendererImp::draw_svg( SVG& svg ) {
-  
+  sample_buffer = vector<unsigned char>(w * h * 4, 255);
   // set top level transformation
   transformation = svg_2_screen;
 
@@ -120,8 +120,23 @@ void SoftwareRendererImp::draw_element( SVGElement* element ) {
 void SoftwareRendererImp::draw_point( Point& point ) {
 
   Vector2D p = transform(point.position);
-  rasterize_point( p.x, p.y, point.style.fillColor );
+  // rasterize_point( p.x, p.y, point.style.fillColor );
+  paint_point( p.x, p.y, point.style.fillColor);
 
+}
+
+void SoftwareRendererImp::paint_point( float x, float y, Color fillColor) {
+  int sx = (int) floor(x);
+  int sy = (int) floor(y);
+
+  // fill sample - NOT doing alpha blending!
+  // printf("%s \n", sample_buffer);
+  // fill_sample(sx, sy, color);
+  for (int i = 0; i < sample_rate; i++) {
+    for (int j = 0; j < sample_rate; j++) {
+      rasterize_point(sx * sample_rate + i, sy * sample_rate + j, fillColor);
+    }
+  }
 }
 
 void SoftwareRendererImp::draw_line( Line& line ) { 
@@ -246,8 +261,8 @@ void SoftwareRendererImp::rasterize_point( float x, float y, Color color ) {
   int sy = (int) floor(y);
 
   // check bounds
-  if ( sx < 0 || sx >= target_w ) return;
-  if ( sy < 0 || sy >= target_h ) return;
+  if ( sx < 0 || sx >= w ) return;
+  if ( sy < 0 || sy >= h ) return;
 
   // fill sample - NOT doing alpha blending!
   // printf("%s \n", sample_buffer);
@@ -258,6 +273,10 @@ void SoftwareRendererImp::rasterize_point( float x, float y, Color color ) {
 void SoftwareRendererImp::rasterize_line( float x0, float y0,
                                           float x1, float y1,
                                           Color color) {
+  x0 = x0 * sample_rate;
+  y0 = y0 * sample_rate;
+  x1 = x1 * sample_rate;
+  y1 = y1 * sample_rate;
 
   // Task 2: 
   // Implement line rasterization
@@ -348,6 +367,13 @@ void SoftwareRendererImp::rasterize_triangle( float x0, float y0,
                                               float x1, float y1,
                                               float x2, float y2,
                                               Color color ) {
+  x0 = x0 * sample_rate;
+  y0 = y0 * sample_rate;
+  x1 = x1 * sample_rate;
+  y1 = y1 * sample_rate;
+  x2 = x2 * sample_rate;
+  y2 = y2 * sample_rate;
+
   // Task 3: 
   // Implement triangle rasterization
   float hmax = ceil(fmax(fmax(x0, x1), x2)), 
@@ -410,6 +436,7 @@ void SoftwareRendererImp::resolve( void ) {
             a += sample_buffer[index + 3] / 255.0f / filter_count;
           }
         }
+
         fill_pixel(x, y, Color(r, g, b, a));
     }
   }
