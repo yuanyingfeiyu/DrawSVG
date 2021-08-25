@@ -82,10 +82,16 @@ Color Sampler2DImp::sample_nearest(Texture& tex,
                                    float u, float v, 
                                    int level) {
 
-  // Task 6: Implement nearest neighbour interpolation
-  
-  // return magenta for invalid level
-  return Color(1,0,1,1);
+  if (level >= tex.mipmap.size())
+    return Color(1,0,1,1);
+  Color c = Color();  MipLevel& mip = tex.mipmap[level];
+  vector<unsigned char>& texels = mip.texels;
+  int x = (int) max(0.0f, floor(u * mip.width - 0.5f));
+  int y = (int) max(0.0f, floor(v * mip.height - 0.5f));
+  int index = 4 * (x + y * mip.width);
+  uint8_to_float(&c.r, &texels[index]);
+  return c;
+
 
 }
 
@@ -94,10 +100,36 @@ Color Sampler2DImp::sample_bilinear(Texture& tex,
                                     int level) {
   
   // Task 6: Implement bilinear filtering
+  if(level >= tex.mipmap.size()) 
+    return Color(1,0,1,1);
+  MipLevel& mip = tex.mipmap[level];
+  vector<unsigned char>& texels = mip.texels;
 
-  // return magenta for invalid level
-  return Color(1,0,1,1);
+  float x = u * mip.width, y = v * mip.height;
 
+  int f00_x = (int) max(0.0f, floor(x - 0.5f));
+  int f00_y = (int) max(0.0f, floor(y - 0.5f));
+
+  int f01_x = f00_x;
+  int f01_y = min((int) mip.height-1, f00_y+1);
+
+  int f10_x = min((int) mip.width-1, f00_x+1);
+  int f10_y = f00_y;
+
+  int f11_x = min((int) mip.width-1, f00_x+1);
+  int f11_y = min((int) mip.height-1, f00_y+1);
+
+  float s = clamp(x - f00_x - 0.5f, 0.0f, 1.0f);
+  float t = clamp(y - f00_y - 0.5f, 0.0f, 1.0f);
+
+  Color c_f00 = Color(), c_f01 = Color(), c_f10 = Color(), c_f11 = Color();
+
+  uint8_to_float(&c_f00.r, &texels[4 * (f00_x + f00_y * mip.width)]);
+  uint8_to_float(&c_f01.r, &texels[4 * (f01_x + f01_y * mip.width)]);
+  uint8_to_float(&c_f10.r, &texels[4 * (f10_x + f10_y * mip.width)]);
+  uint8_to_float(&c_f11.r, &texels[4 * (f11_x + f11_y * mip.width)]);
+
+  return (1.0f - t) * ((1.0f - s) * c_f00 + s * c_f10) + t * ((1.0f - s) * c_f01 + s * c_f11);
 }
 
 Color Sampler2DImp::sample_trilinear(Texture& tex, 

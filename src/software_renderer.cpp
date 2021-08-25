@@ -400,7 +400,33 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
                                            Texture& tex ) {
   // Task 6: 
   // Implement image rasterization
+  float dx = x1 - x0;
+  float dy = y1 - y0;
 
+  float period = 1.0f / sample_rate;
+  float offset = period * 0.5f;
+  float imgW = x1 - x0;
+  float imgH = y1 - y0;
+
+  for (float y = floor(y0); y <= floor(y1); y++) {
+      for (float x = floor(x0); x <= floor(x1); x++) {
+          for (int i = 0; i < sample_rate; i++) {
+              for (int j = 0; j < sample_rate; j++) {
+                  // sample locations (pixel coordinates)
+                  float xs = x + j * period + offset;
+                  float ys = y + i * period + offset;
+                  
+                  float u = (xs - x0) / imgW;
+                  float v = (ys - y0) / imgH;
+                  Color c = sampler->sample_bilinear(tex, u, v, 0);
+
+                  int sx = (int)floor(xs * sample_rate);
+                  int sy = (int)floor(ys * sample_rate);
+                  fill_sample(sx, sy, c);
+              }
+          }
+      }
+  }
 }
 
 
