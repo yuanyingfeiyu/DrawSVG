@@ -418,7 +418,7 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
                   
                   float u = (xs - x0) / imgW;
                   float v = (ys - y0) / imgH;
-                  Color c = sampler->sample_bilinear(tex, u, v, 0);
+                  Color c = sampler->sample_trilinear(tex, u, v, imgW, imgH);
 
                   int sx = (int)floor(xs * sample_rate);
                   int sy = (int)floor(ys * sample_rate);

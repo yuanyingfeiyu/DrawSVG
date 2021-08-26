@@ -62,6 +62,31 @@ void Sampler2DImp::generate_mips(Texture& tex, int startLevel) {
     level.height = height;
     level.texels = vector<unsigned char>(4 * width * height);
 
+    for(int x = 0; x < level.width; x++) {
+      for(int y = 0; y < level.height; y++) {
+
+        int redSum = 0, greenSum = 0, blueSum = 0, alphaSum = 0;
+        MipLevel& lastLevel = tex.mipmap[startLevel + i - 1];
+
+                // four neighbors
+        for(int j = 0; j < 2; j++) {
+          for(int k = 0; k < 2; k++) {
+            // RGBA
+            int index = 4 * (x+j + (y+k) * lastLevel.width);
+            redSum += lastLevel.texels[index];
+            greenSum += lastLevel.texels[index+1];
+            blueSum += lastLevel.texels[index+2];
+            alphaSum += lastLevel.texels[index+3];
+          }
+        }
+
+        level.texels[x + y * level.width] = redSum / 4;
+        level.texels[x + y * level.width + 1] = greenSum / 4;
+        level.texels[x + y * level.width + 2] = blueSum / 4;
+        level.texels[x + y * level.width + 3] = alphaSum / 4;
+      }
+    }
+
   }
 
   // fill all 0 sub levels with interchanging colors (JUST AS A PLACEHOLDER)
@@ -139,7 +164,27 @@ Color Sampler2DImp::sample_trilinear(Texture& tex,
   // Task 7: Implement trilinear filtering
 
   // return magenta for invalid level
-  return Color(1,0,1,1);
+  float dudx = tex.width / u_scale;
+  float dvdx = tex.height / u_scale;
+  float dudy = tex.width / v_scale;
+  float dvdy = tex.height / v_scale;
+
+  float Lx2 = dudx * dudx + dvdx * dvdx;
+  float Ly2 = dudy * dudy + dvdy * dvdy;
+
+  float w = max(0.0f, log2f(sqrt(max(Lx2, Ly2)))); // IT IS VERY IMPORTANT TO CHECK BOUNDS
+  int d = int(w);
+  w = w - d;
+
+  if (d >= tex.mipmap.size())
+      return Color(1,0,1,1);
+   
+  Color a = this->sample_bilinear(tex, u, v, d);
+  if ((d + 1) >= tex.mipmap.size())
+      return a;
+
+  Color b = this->sample_bilinear(tex, u, v, d + 1);
+  return (1.0f - w) * a + (w) * b;
 
 }
 
