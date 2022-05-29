@@ -39,14 +39,45 @@ void SoftwareRendererImp::draw_svg( SVG& svg ) {
   resolve();
 }
 
+// Alpha Blending using Pre-Multiplied Alpha
+Color SoftwareRendererImp::alpha_blend(int index, Color over) {
+    // read current color from buffer
+    Color under = Color();
+    under.r = sample_buffer[index] / 255.f;
+    under.g = sample_buffer[index + 1] / 255.f;
+    under.b = sample_buffer[index + 2] / 255.f;
+    under.a = sample_buffer[index + 3] / 255.f;
+
+    // premultiply alphas
+    under.r *= under.a;
+    under.g *= under.a;
+    under.b *= under.a;
+    over.r *= over.a;
+    over.g *= over.a;
+    over.b *= over.a;
+
+    // Blend
+    Color blend = over + (1 - over.a) * under;
+
+    // Undo premultiply alpha
+    blend.r /= blend.a;
+    blend.g /= blend.a;
+    blend.b /= blend.a;
+
+    return blend;
+}
+
 void SoftwareRendererImp::fill_sample( int sx, int sy, const Color& color ) {
   if(sx < 0 || sx >= w) return;
   if(sy < 0 || sy >= h) return;
 
-  sample_buffer[4 * (sx + sy * w)    ] = (uint8_t) (color.r * 255);
-  sample_buffer[4 * (sx + sy * w) + 1] = (uint8_t) (color.g * 255);
-  sample_buffer[4 * (sx + sy * w) + 2] = (uint8_t) (color.b * 255);
-  sample_buffer[4 * (sx + sy * w) + 3] = (uint8_t) (color.a * 255);
+  int index = 4 * (sx + sy * w);
+    Color blend = alpha_blend(index, color);
+
+  sample_buffer[4 * (sx + sy * w)    ] = (uint8_t) (blend.r * 255);
+  sample_buffer[4 * (sx + sy * w) + 1] = (uint8_t) (blend.g * 255);
+  sample_buffer[4 * (sx + sy * w) + 2] = (uint8_t) (blend.b * 255);
+  sample_buffer[4 * (sx + sy * w) + 3] = (uint8_t) (blend.a * 255);
 };
 
 void SoftwareRendererImp::fill_pixel( int x, int y, const Color& color ) {

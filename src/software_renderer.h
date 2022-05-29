@@ -139,6 +139,8 @@ class SoftwareRendererImp : public SoftwareRenderer {
   void fill_sample( int sx, int sy, const Color& c );
   void fill_pixel( int x, int y, const Color& c );
 
+  // Alpha Blending using Pre-Multiplied Alpha
+  Color alpha_blend(int index, Color under);
 }; // class SoftwareRendererImp
 
 
